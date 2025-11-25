@@ -1,11 +1,17 @@
 import path from "node:path";
-import { DocumentReference } from "../utils/types";
-import sqlite from "./sqlite";
-import { Documents } from "../drizzle/schema";
+import sqlite from "../lib/drizzle/sqlite";
+import { Documents } from "../lib/drizzle/schema";
 import { and, eq } from "drizzle-orm";
-import { mkdir } from "node:fs/promises";
+import { mkdir, unlink } from "node:fs/promises";
+import { SessionID } from "../utils/crypto";
 
-export const FILE_UPLOAD_DIR = `${process.cwd()}/../../uploads`;
+export interface DocumentReference {
+  referenceName: string;
+  originalName: string;
+}
+
+export const FILE_UPLOAD_DIR = `${process.cwd()}/uploads`;
+export const DOCUMENT_OPERATION_STORE = new Set<SessionID>();
 
 try {
   await mkdir(FILE_UPLOAD_DIR, { recursive: true });
@@ -56,7 +62,7 @@ export const addFiles = async (documents: File[], sessionId: string) => {
 };
 
 export const removeFile = async (sessionId: string, referenceName?: string) => {
-  return sqlite
+  const fileRefs = await sqlite
     .delete(Documents)
     .where(
       and(
@@ -65,6 +71,18 @@ export const removeFile = async (sessionId: string, referenceName?: string) => {
       )
     )
     .returning();
+
+  const filePaths = fileRefs.map(
+    (ref) => `${FILE_UPLOAD_DIR}/${ref.referenceName}`
+  );
+
+  await Promise.all(
+    filePaths.map(async (path) => {
+      await unlink(path);
+    })
+  );
+
+  return fileRefs;
 };
 
 export const getFileRefs = (sessionId: string) => {

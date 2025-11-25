@@ -1,20 +1,20 @@
-import { TextLoader } from "langchain/document_loaders/fs/text";
-import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
-import { DocxLoader } from "@langchain/community/document_loaders/fs/docx";
+import { PDFReader } from "@llamaindex/readers/pdf"
+import { DocxReader } from "@llamaindex/readers/docx"
+import { TextFileReader } from "@llamaindex/readers/text"
 
 export const loadTextDocument = async (filePath: string) => {
-  const loader = new TextLoader(filePath);
-  return loader.load();
+  const reader = new TextFileReader();
+  return reader.loadData(filePath)
 };
 
 export const loadPDFDocument = async (filePath: string) => {
-  const loader = new PDFLoader(filePath, { splitPages: true });
-  return loader.load();
+  const reader = new PDFReader();
+  return reader.loadData(filePath)
 };
 
 export const loadDocxDocument = async (filePath: string) => {
-  const loader = new DocxLoader(filePath);
-  return loader.load();
+  const reader = new DocxReader();
+  return reader.loadData(filePath);
 };
 
 export const loadDocument = (filePath: string) => {

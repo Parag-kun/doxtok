@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "585fd6db-32dc-4783-b651-80676b41e3b7",
-  "prevId": "987f5610-b889-4cfc-9d64-1924459189bd",
+  "id": "1463cff6-0a7c-4ca0-8e07-d460bda3080b",
+  "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "Chats": {
       "name": "Chats",
@@ -35,15 +35,15 @@
           "notNull": false,
           "autoincrement": false
         },
-        "createdAt": {
-          "name": "createdAt",
+        "created_at": {
+          "name": "created_at",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "updatedAt": {
-          "name": "updatedAt",
+        "updated_at": {
+          "name": "updated_at",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -83,6 +83,13 @@
         "originalName": {
           "name": "originalName",
           "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false

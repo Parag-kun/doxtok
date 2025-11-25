@@ -1,20 +1,56 @@
 import { Elysia } from "elysia";
-import { staticPlugin } from "@elysiajs/static";
+import "./lib/llama-index/model";
+
 import sessionRouter from "./modules/session";
-import { FILE_UPLOAD_DIR } from "./services/file-manager";
 import documentsRouter from "./modules/document";
+import chatRouter from "./modules/chat";
+import cors from "@elysiajs/cors";
 
 const app = new Elysia();
 
-app.get("/", () => "DoxTok backend");
+app.get("/", ({ cookie }) => {
+  return "DoxTok backend";
+});
 
 app
-  .use(staticPlugin({ assets: FILE_UPLOAD_DIR, prefix: "/static" }))
-  .use(sessionRouter)
-  .use(documentsRouter);
+  .use(
+    cors({
+      credentials: true,
+    })
+  )
+  .onError(({ code, error, set }) => {
+    console.error("❌ Error code:", code);
 
-app.listen(3000);
+    if (code === "VALIDATION") {
+      set.status = 422;
+
+      return {
+        message: error.all.map((e) => e.summary).join(", "),
+        success: false,
+      };
+    }
+
+    console.error("❌ Runtime error:", error);
+    // @ts-ignore
+    console.error("Stack trace:", error.stack);
+    set.status = 500;
+    // @ts-ignore
+    return { message: error.message, success: false };
+  })
+  .use(sessionRouter)
+  .use(documentsRouter)
+  .use(chatRouter);
+
+app.listen({ port: 4000 });
 
 console.log(
   `🦊 Elysia is running at http://${app.server?.hostname}:${app.server?.port}`
 );
+
+process.on("uncaughtException", (err) => {
+  console.error("❌ Uncaught Exception:", err);
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("❌ Unhandled Rejection at:", promise, "reason:", reason);
+});

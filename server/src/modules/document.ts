@@ -1,33 +1,43 @@
 import Elysia, { t } from "elysia";
 import {
   addDocumentToSession,
+  CREATE_SESSION_STORE,
   getFIleUrls,
   removeFileFromSession,
 } from "../services/session";
-import { getFile } from "../services/file-manager";
+import { DOCUMENT_OPERATION_STORE, getFile } from "../services/file-manager";
+import { cookieValidator } from "../utils/validators";
+import { SessionID } from "../utils/crypto";
 
 const documentsRouter = new Elysia({ prefix: "/documents" })
   .get(
     "/urls",
-    ({ query, server }) => {
-      const { sessionId } = query;
-      const hostname = server!.hostname!;
+    ({ cookie: { session } }) => {
+      console.log("Fetching document URLs for session:", session.value);
 
-      const documentUrls = getFIleUrls(hostname, sessionId);
+      if (
+        CREATE_SESSION_STORE.has(session.value as SessionID) ||
+        DOCUMENT_OPERATION_STORE.has(session.value as SessionID)
+      ) {
+        return {
+          isLoading: true,
+        };
+      }
 
-      return { documentUrls };
+      const documentUrls = getFIleUrls(session.value);
+
+      return { data: { documentUrls } };
     },
     {
-      query: t.Object({ sessionId: t.String() }),
+      cookie: cookieValidator,
     }
   )
   .get(
     "/:referenceName",
-    async ({ params, query, set }) => {
+    async ({ params, set, cookie: { session } }) => {
       const { referenceName } = params;
-      const { sessionId } = query;
 
-      const { file, fileRef } = getFile(sessionId, referenceName);
+      const { file, fileRef } = getFile(session.value, referenceName);
 
       set.headers[
         "Content-Disposition"
@@ -39,15 +49,15 @@ const documentsRouter = new Elysia({ prefix: "/documents" })
     },
     {
       params: t.Object({ referenceName: t.String() }),
-      query: t.Object({ sessionId: t.String() }),
+      cookie: cookieValidator,
     }
   )
   .post(
     "/",
-    async ({ body }) => {
-      const { document, sessionId } = body;
+    async ({ body, cookie: { session } }) => {
+      const { document } = body;
 
-      await addDocumentToSession(document, sessionId);
+      await addDocumentToSession(document, session.value);
 
       return { message: "Document added successfully" };
     },
@@ -56,25 +66,23 @@ const documentsRouter = new Elysia({ prefix: "/documents" })
         sessionId: t.String(),
         document: t.File(),
       }),
+      cookie: cookieValidator,
     }
   )
   .delete(
     "/:referenceName",
-    async ({ query, params }) => {
-      const { sessionId } = query;
+    async ({ params, cookie: { session } }) => {
       const { referenceName } = params;
 
-      await removeFileFromSession(sessionId, referenceName);
+      await removeFileFromSession(session.value, referenceName);
 
       return { message: "Document removed successfully" };
     },
     {
-      query: t.Object({
-        sessionId: t.String(),
-      }),
       params: t.Object({
         referenceName: t.String(),
       }),
+      cookie: cookieValidator,
     }
   );
 

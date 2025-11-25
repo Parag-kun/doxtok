@@ -1,6 +1,12 @@
 import { eq } from "drizzle-orm";
-import { Chats } from "../drizzle/schema";
-import sqlite from "./sqlite";
+import { Chats } from "../lib/drizzle/schema";
+import sqlite from "../lib/drizzle/sqlite";
+import { getTopKRelevantDocumentsFromVS } from "../lib/llama-index/storage";
+import { PromptTemplateHelper, RAG_TEMPLATE } from "../lib/llama-index/prompt";
+import { ollama } from "../lib/llama-index/model";
+import { SessionID } from "../utils/crypto";
+
+export const QUERY_CHAT_STORE = new Set<SessionID>();
 
 export const getChatsBySessionId = (sessionId: string) => {
   return sqlite
@@ -10,35 +16,29 @@ export const getChatsBySessionId = (sessionId: string) => {
     .all();
 };
 
-export const getResponseFromRAG = (question: string, sessionId: string) => {
+export const handleResponseFromRAG = async (
+  question: string,
+  sessionId: string
+) => {
+  const nodes = await getTopKRelevantDocumentsFromVS(question, { sessionId });
+  const context = nodes
+    // @ts-ignore 
+    .map((node) => JSON.stringify(node.node.text))
+    .join("\n\n");
 
-}
+  const template = new PromptTemplateHelper(RAG_TEMPLATE);
+  const prompt = template.format({ context, question });
 
-// // Conceptual example structure (using LangChain.js/Python concepts)
-// import { RunnablePassthrough, RunnableSequence } from "@langchain/core/runnables";
+  const response = await ollama.exec({
+    messages: [{ role: "system", content: prompt }],
+  });
 
-// // 1. Define the components
-// const retriever = vectorstore.asRetriever(); // A Runnable<string, Document[]>
-// const prompt = ChatPromptTemplate.fromTemplate(...); // A Runnable<Map, PromptValue>
-// const model = new ChatModel(); // A Runnable<PromptValue, BaseMessage>
+  const answer = response.newMessages
+    .filter((msg) => msg.role === "assistant")
+    .map((msg) => msg.content)
+    .join("\n\n");
 
-// // 2. Define the document formatting function
-// const formatDocs = (docs) => docs.map(doc => doc.pageContent).join("\n\n");
+  await sqlite.insert(Chats).values({ sessionId, question, answer });
 
-// // 3. Create the RAG chain using .pipe() and .assign()
-// const ragChain = RunnablePassthrough.assign({
-//     // 'context' key is populated first:
-//     // It runs the original input through the retriever, then formats the output
-//     context: RunnableSequence.from([
-//         (input) => input.question, // Extract the question from the input map
-//         retriever,
-//         formatDocs
-//     ]),
-//     // The 'question' key is populated by passing through the original 'question' input
-//     question: new RunnablePassthrough() // Pass the original input key through
-// }).pipe(prompt) // Pipe the structured map to the prompt template
-//   .pipe(model) // Pipe the formatted prompt to the LLM
-//   .pipe(new StringOutputParser()); // Pipe the LLM output to a parser
-
-// // Invocation
-// // await ragChain.invoke({ question: "Your question here" });
+  return answer;
+};
