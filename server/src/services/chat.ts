@@ -20,25 +20,33 @@ export const handleResponseFromRAG = async (
   question: string,
   sessionId: string
 ) => {
-  const nodes = await getTopKRelevantDocumentsFromVS(question, { sessionId });
-  const context = nodes
-    // @ts-ignore 
-    .map((node) => JSON.stringify(node.node.text))
-    .join("\n\n");
+  const chat = await sqlite
+    .insert(Chats)
+    .values({ sessionId, question })
+    .returning();
 
-  const template = new PromptTemplateHelper(RAG_TEMPLATE);
-  const prompt = template.format({ context, question });
+  // IIFE for instant execution
+  (async () => {
+    const nodes = await getTopKRelevantDocumentsFromVS(question, { sessionId });
+    const context = nodes
+      // @ts-ignore
+      .map((node) => JSON.stringify(node.node.text))
+      .join("\n\n");
 
-  const response = await ollama.exec({
-    messages: [{ role: "system", content: prompt }],
-  });
+    const template = new PromptTemplateHelper(RAG_TEMPLATE);
+    const prompt = template.format({ context, question });
 
-  const answer = response.newMessages
-    .filter((msg) => msg.role === "assistant")
-    .map((msg) => msg.content)
-    .join("\n\n");
+    const response = await ollama.exec({
+      messages: [{ role: "system", content: prompt }],
+    });
 
-  await sqlite.insert(Chats).values({ sessionId, question, answer });
+    const answer = response.newMessages
+      .filter((msg) => msg.role === "assistant")
+      .map((msg) => msg.content)
+      .join("\n\n");
 
-  return answer;
+    await sqlite.update(Chats).set({ answer }).where(eq(Chats.id, chat[0].id));
+
+    QUERY_CHAT_STORE.delete(sessionId as SessionID);
+  })();
 };

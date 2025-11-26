@@ -1,8 +1,18 @@
+import { QueryClientProvider } from "@tanstack/solid-query";
+import Page from "./pages";
+import { QueryClient } from "@tanstack/query-core";
+import { Toaster } from "solid-toast";
+
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+});
+
 function App() {
   return (
-    <div class="flex justify-center items-center h-screen bg-slate-900">
-      <div class="text-4xl font-bold text-white">DoxTok Client</div>
-    </div>
+    <QueryClientProvider client={queryClient}>
+      <Toaster position="top-right" />
+      <Page />
+    </QueryClientProvider>
   );
 }
 

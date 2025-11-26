@@ -17,22 +17,22 @@ import {
 
 export const CREATE_SESSION_STORE = new Set<SessionID>();
 
-export const createSession = async (
-  documents: File[],
-  onSessionCreation: (sessionId: SessionID) => any
-) => {
+export const createSession = (documents: File[]) => {
   const sessionId = createSessionId();
 
-  onSessionCreation(sessionId);
+  // IIFE for immediate independent execution
+  (async () => {
+    const documentRefs = await addFiles(documents, sessionId);
 
-  const documentRefs = await addFiles(documents, sessionId);
+    const filedata = documentRefs.map((docRef) => ({
+      filePath: path.join(FILE_UPLOAD_DIR, docRef.referenceName),
+      metadata: { sessionId, filename: docRef.referenceName },
+    }));
 
-  const filedata = documentRefs.map((docRef) => ({
-    filePath: path.join(FILE_UPLOAD_DIR, docRef.referenceName),
-    metadata: { sessionId, filename: docRef.referenceName },
-  }));
+    await addDocumentsToVS(filedata);
 
-  await addDocumentsToVS(filedata);
+    CREATE_SESSION_STORE.delete(sessionId);
+  })();
 
   return sessionId;
 };
