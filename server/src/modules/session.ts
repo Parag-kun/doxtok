@@ -6,6 +6,7 @@ import {
   removeFileFromSession,
 } from "../services/session";
 import { cookieValidator } from "../utils/validators";
+import { delay } from "../utils/dev";
 
 const sessionRouter = new Elysia({ prefix: "/sessions" })
   .get(
@@ -34,16 +35,14 @@ const sessionRouter = new Elysia({ prefix: "/sessions" })
   .post(
     "/",
     async ({ body, cookie: { session } }) => {
-      const sessionId = await createSession(body.documents, (sessionId) => {
-        session.set({
-          value: sessionId,
-          httpOnly: true,
-        });
+      const sessionId = createSession(body.documents);
 
-        CREATE_SESSION_STORE.add(sessionId);
+      session.set({
+        value: sessionId,
+        httpOnly: true,
       });
 
-      CREATE_SESSION_STORE.delete(sessionId);
+      CREATE_SESSION_STORE.add(sessionId);
 
       return { message: "Session created!" };
     },

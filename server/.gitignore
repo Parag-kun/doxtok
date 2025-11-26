@@ -46,3 +46,4 @@ bun.lock
 
 uploads/
 vector-store/
+.env

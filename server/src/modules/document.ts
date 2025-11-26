@@ -21,12 +21,13 @@ const documentsRouter = new Elysia({ prefix: "/documents" })
       ) {
         return {
           isLoading: true,
+          data: { documentUrls: [] },
         };
       }
 
       const documentUrls = getFIleUrls(session.value);
 
-      return { data: { documentUrls } };
+      return { data: { documentUrls }, isLoading: false };
     },
     {
       cookie: cookieValidator,

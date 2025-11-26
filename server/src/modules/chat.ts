@@ -39,11 +39,9 @@ const chatRouter = new Elysia({ prefix: "/chats" })
 
       const { question } = body;
 
-      const answer = await handleResponseFromRAG(question, session.value);
+      await handleResponseFromRAG(question, session.value);
 
-      QUERY_CHAT_STORE.delete(session.value as SessionID);
-
-      return { message: "Response", data: { answer } };
+      return { message: "Response" };
     },
     {
       body: t.Object({
